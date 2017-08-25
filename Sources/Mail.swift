@@ -19,13 +19,21 @@ import Foundation
 /// Represents an email that can be sent through an `SMTP` instance.
 public struct Mail {
     private let uuid = UUID().uuidString
+	
+	private var hostname: String {
+		let fullEmail = from.email
+		let atIndex = fullEmail.characters.index(of: "@")
+		let hostStart = fullEmail.index(after: atIndex!)
+		let hostnameVal = fullEmail.substring(from: hostStart)
+		
+		return hostnameVal
+	}
 
     /// message-id https://tools.ietf.org/html/rfc5322#section-3.6.4
     public var id: String {
         return "<\(uuid).Swift-SMTP@\(hostname)>"
     }
 
-    let hostname: String
     let from: User
     let to: [User]
     let cc: [User]
@@ -39,8 +47,6 @@ public struct Mail {
     /// Initializes a `Mail` object.
     ///
     /// - Parameters:
-    ///     - hostname: Hostname of the SMTP server to connect to. Should not
-    ///                 include any scheme--ie `smtp.example.com` is valid.
     ///     - from: The `User` that the `Mail` will be sent from.
     ///     - to: Array of `User`s to send the `Mail` to.
     ///     - cc: Array of `User`s to cc. Defaults to none.
@@ -57,8 +63,7 @@ public struct Mail {
     ///                          overwrite each other. Defaults to none. The
     ///                          following will be ignored: CONTENT-TYPE,
     ///                          CONTENT-DISPOSITION, CONTENT-TRANSFER-ENCODING.
-    public init(hostname: String,
-                from: User,
+    public init(from: User,
                 to: [User],
                 cc: [User] = [],
                 bcc: [User] = [],
@@ -66,7 +71,6 @@ public struct Mail {
                 text: String = "",
                 attachments: [Attachment] = [],
                 additionalHeaders: [String: String] = [:]) {
-        self.hostname = hostname
         self.from = from
         self.to = to
         self.cc = cc

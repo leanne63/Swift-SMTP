@@ -49,7 +49,7 @@ public struct SMTP {
     private let authMethods: [AuthMethod]
     private let domainName: String
     private let accessToken: String?
-    private let timeout: UInt
+    private let timeout: Int
 
     /// Initializes an `SMTP` instance.
     ///
@@ -90,7 +90,7 @@ public struct SMTP {
                 authMethods: [AuthMethod] = [],
                 domainName: String = "localhost",
                 accessToken: String? = nil,
-                timeout: UInt = 10) {
+                timeout: Int = 10) {
         self.hostname = hostname
         self.email = email
         self.password = password
@@ -108,44 +108,6 @@ public struct SMTP {
         self.domainName = domainName
         self.accessToken = accessToken
         self.timeout = timeout
-    }
-
-    /// Returns a `Mail`.
-    ///
-    /// - Parameters:
-    ///     - from: The `User` that the `Mail` will be sent from.
-    ///     - to: Array of `User`s to send the `Mail` to.
-    ///     - cc: Array of `User`s to cc. Defaults to none.
-    ///     - bcc: Array of `User`s to bcc. Defaults to none.
-    ///     - subject: Subject of the `Mail`. Defaults to none.
-    ///     - text: Text of the `Mail`. Defaults to none.
-    ///     - attachments: Array of `Attachment`s for the `Mail`. If the `Mail`
-    ///                    has multiple `Attachment`s that are alternatives to
-    ///                    to plain text, the last one will be used as the
-    ///                    alternative (all the `Attachments` will still be
-    ///                    sent). Defaults to none.
-    ///     - additionalHeaders: Additional headers for the `Mail`. Header keys
-    ///                          are capitalized and duplicate keys will
-    ///                          overwrite each other. Defaults to none. The
-    ///                          following will be ignored: CONTENT-TYPE,
-    ///                          CONTENT-DISPOSITION, CONTENT-TRANSFER-ENCODING.
-    public func makeMail(from: User,
-                         to: [User],
-                         cc: [User] = [],
-                         bcc: [User] = [],
-                         subject: String = "",
-                         text: String = "",
-                         attachments: [Attachment] = [],
-                         additionalHeaders: [String: String] = [:]) -> Mail {
-        return Mail(hostname: hostname,
-                    from: from,
-                    to: to,
-                    cc: cc,
-                    bcc: bcc,
-                    subject: subject,
-                    text: text,
-                    attachments: attachments,
-                    additionalHeaders: additionalHeaders)
     }
 
     /// Send an email.
@@ -205,11 +167,12 @@ public struct SMTP {
                       authMethods: authMethods,
                       domainName: domainName,
                       accessToken: accessToken,
-                      timeout: timeout) { (loginResult) in
-                        switch loginResult {
-                        case .failure(let error):
+                      timeout: timeout) { (socket, error) in
+                        if let error = error {
                             completion?([], mails.map { ($0, error) })
-                        case .success(let socket):
+                            return
+                        }
+                        if let socket = socket {
                             Sender(socket: socket,
                                    pending: mails,
                                    progress: progress,
@@ -219,5 +182,42 @@ public struct SMTP {
         } catch {
             completion?([], mails.map { ($0, error) })
         }
+    }
+
+    /// Returns a `Mail`.
+    ///
+    /// - Parameters:
+    ///     - from: The `User` that the `Mail` will be sent from.
+    ///     - to: Array of `User`s to send the `Mail` to.
+    ///     - cc: Array of `User`s to cc. Defaults to none.
+    ///     - bcc: Array of `User`s to bcc. Defaults to none.
+    ///     - subject: Subject of the `Mail`. Defaults to none.
+    ///     - text: Text of the `Mail`. Defaults to none.
+    ///     - attachments: Array of `Attachment`s for the `Mail`. If the `Mail`
+    ///                    has multiple `Attachment`s that are alternatives to
+    ///                    to plain text, the last one will be used as the
+    ///                    alternative (all the `Attachments` will still be
+    ///                    sent). Defaults to none.
+    ///     - additionalHeaders: Additional headers for the `Mail`. Header keys
+    ///                          are capitalized and duplicate keys will
+    ///                          overwrite each other. Defaults to none. The
+    ///                          following will be ignored: CONTENT-TYPE,
+    ///                          CONTENT-DISPOSITION, CONTENT-TRANSFER-ENCODING.
+    public func makeMail(from: User,
+                         to: [User],
+                         cc: [User] = [],
+                         bcc: [User] = [],
+                         subject: String = "",
+                         text: String = "",
+                         attachments: [Attachment] = [],
+                         additionalHeaders: [String: String] = [:]) -> Mail {
+        return Mail(from: from,
+                    to: to,
+                    cc: cc,
+                    bcc: bcc,
+                    subject: subject,
+                    text: text,
+                    attachments: attachments,
+                    additionalHeaders: additionalHeaders)
     }
 }
